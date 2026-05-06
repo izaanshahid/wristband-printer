@@ -125,7 +125,7 @@ function canvasToEplGraphic(sourceCanvas, x, y, orientation = "horizontal", opti
   return `GW${eplX},${eplY},${bytesPerRow},${outputHeight},${data}`;
 }
 
-function imageToEplGraphic(img, el, orientation = "horizontal", lengthOffset = 0) {
+function imageToEplGraphic(img, el, orientation = "horizontal", lengthOffset = 0, options = {}) {
   const width = Math.max(1, Math.round(el.w || 80));
   const height = Math.max(1, Math.round(el.h || 40));
   const canvas = document.createElement("canvas");
@@ -135,9 +135,17 @@ function imageToEplGraphic(img, el, orientation = "horizontal", lengthOffset = 0
   canvas.height = height;
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(img, 0, 0, width, height);
 
-  return canvasToEplGraphic(canvas, el.x, el.y, orientation, { lengthOffset });
+  if (options.flipX) {
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, -width, 0, width, height);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, 0, 0, width, height);
+  }
+
+  return canvasToEplGraphic(canvas, el.x, el.y, orientation, { lengthOffset, invert: options.invert });
 }
 
 function normalizeCode39Value(value) {
@@ -312,6 +320,7 @@ function mediaCommand(labelLength) {
 
 function buildBasicEPL2({
   elements,
+  logoImg = null,
   darkness = 14,
   speed = 2,
   labelLength = DEFAULT_LABEL_LENGTH_DOTS,
@@ -328,6 +337,7 @@ function buildBasicEPL2({
   const lines = [];
   const textEls = elements.filter((el) => el.type === "text");
   const barcodeEl = elements.find((el) => el.type === "barcode");
+  const logoEls = elements.filter((el) => el.type === "logo");
 
   lines.push("N");
   lines.push("JB");
@@ -335,6 +345,16 @@ function buildBasicEPL2({
   lines.push(`S${speed}`);
   lines.push(`q${BAND_WIDTH_DOTS}`);
   lines.push(mediaCommand(labelLength));
+
+  if (logoImg) {
+    logoEls.forEach((el) => {
+      const flipX = printDirection === "bookingqube";
+      const adjustedEl = flipX
+        ? { ...el, x: PRINTABLE_LENGTH_DOTS - el.x - (el.w || 80) }
+        : el;
+      lines.push(imageToEplGraphic(logoImg, adjustedEl, "horizontal", printStartOffset, { flipX, invert: true }));
+    });
+  }
 
   textEls.forEach((el) => {
     const font = el.font || 3;
@@ -469,7 +489,7 @@ const DEFAULT_ELEMENTS = [
   { id: "logo",    type: "logo",    label: "Logo",    x: 40,  y: 24,  w: 170, h: 70 },
   { id: "name",    type: "text",    label: "Name",    value: "John Doe",    x: 260, y: 42,  font: 3, hm: 1, vm: 1 },
   { id: "id",      type: "text",    label: "ID",      value: "ID: 00123",   x: 260, y: 92,  font: 2, hm: 1, vm: 1 },
-  { id: "barcode", type: "barcode", label: "Barcode", value: "1234567890",  x: 520, y: 38, height: 95 },
+  { id: "barcode", type: "barcode", label: "Barcode", value: "1234567890",  x: 520, y: 38, height: 50 },
 ];
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -638,6 +658,7 @@ function ZebraAppContent() {
 
     const epl = buildBasicEPL2({
       elements,
+      logoImg,
       darkness,
       labelLength,
       printStartOffset,

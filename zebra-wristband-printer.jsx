@@ -39,7 +39,7 @@ const PrintAPI = {
 
 const BAND_WIDTH_DOTS = 203;
 const PRINTABLE_LENGTH_DOTS = 1358;
-const DEFAULT_LABEL_LENGTH_DOTS = 2238;
+const DEFAULT_LABEL_LENGTH_DOTS = 1143;
 const WORKING_TEST_EPL = 'N\r\nD10\r\nS2\r\nq203\r\nQ2238,0\r\nA20,40,0,3,1,1,N,"SERVER TEST"\r\nP1\r\n';
 const CODE39_PATTERNS = {
   "0": "nnnwwnwnn", "1": "wnnwnnnnw", "2": "nnwwnnnnw", "3": "wnwwnnnnn",
@@ -401,7 +401,7 @@ function buildEPL2({
 }) {
   const lines = [];
   lines.push("N");
-  lines.push("JB");                        // batch mode: disables backfeed between labels
+  lines.push("JB");
   lines.push(`D${darkness}`);
   lines.push(`S${speed}`);
   lines.push(`q${BAND_WIDTH_DOTS}`);
